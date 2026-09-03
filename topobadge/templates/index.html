@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>topobadge</title>
+<style>
+  :root {
+    --bg: #14171a;
+    --panel: #1c2024;
+    --panel-2: #23282d;
+    --border: #333a40;
+    --text: #e8ebee;
+    --muted: #9aa4ad;
+    --accent: #4f8f5f;
+    --accent-2: #2e75b6;
+    --brown: #8b5a2b;
+    --danger: #c0564a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { margin-bottom: 28px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  [hidden] { display: none !important; }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .dropzone.drag { border-color: var(--accent); background: rgba(79,143,95,0.08); }
+  .dropzone .filename { margin-top: 8px; color: var(--accent); font-weight: 600; }
+  .dropzone .hint { color: var(--muted); font-size: 0.9rem; }
+  input[type=file] { display: none; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-top: 16px; }
+  .field label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 4px; }
+  .field input[type=number], .field select {
+    width: 100%; padding: 8px 10px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-size: 0.95rem;
+  }
+  .field.checkbox { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
+  .field.checkbox input { width: 16px; height: 16px; }
+  .field.checkbox label { margin: 0; font-size: 0.88rem; color: var(--text); }
+
+  .shape-toggle { display: flex; gap: 8px; }
+  .shape-toggle button {
+    flex: 1; padding: 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 0.9rem;
+  }
+  .shape-toggle button.active { border-color: var(--accent); background: rgba(79,143,95,0.18); color: var(--text); }
+
+  details { margin-top: 18px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 0.88rem; user-select: none; }
+  summary:hover { color: var(--text); }
+
+  .actions { display: flex; align-items: center; gap: 14px; margin-top: 20px; }
+  button.primary {
+    background: var(--accent); color: #fff; border: none; padding: 11px 22px;
+    border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+  .status-line { color: var(--muted); font-size: 0.9rem; }
+
+  pre#log, pre#buildLog {
+    background: #0d0f11; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; max-height: 260px; overflow-y: auto; font-size: 0.82rem;
+    white-space: pre-wrap; word-break: break-word; margin: 0;
+  }
+
+  .warning { background: rgba(200,160,60,0.12); border: 1px solid #a88a3a; color: #e9cf8f; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 0.9rem; }
+  .error { background: rgba(192,86,74,0.12); border: 1px solid var(--danger); color: #f0a99f; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; }
+
+  .adjust-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+  @media (max-width: 820px) { .adjust-layout { grid-template-columns: 1fr; } }
+  .preview-box img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; background: #0d0f11; }
+  .preview-box .fetch-info { margin-top: 10px; color: var(--muted); font-size: 0.82rem; }
+
+  .stats { list-style: none; margin: 12px 0 0; padding: 0; font-size: 0.85rem; }
+  .stats li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .stats .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  table.qa { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.88rem; }
+  table.qa th, table.qa td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  table.qa th { color: var(--muted); font-weight: 500; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  .files { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .files a {
+    color: var(--text); text-decoration: none; background: var(--panel-2); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 7px; font-size: 0.88rem;
+  }
+  .files a:hover { border-color: var(--accent); }
+
+  table.layers, table.assign { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 4px; }
+  table.layers th, table.layers td, table.assign th, table.assign td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.layers th, table.assign th { color: var(--muted); font-weight: 500; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  table.layers input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 5px; background: var(--panel-2); cursor: pointer; }
+  table.layers input[type=number] { width: 62px; padding: 4px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-size: 0.82rem; }
+  table.assign select { width: 100%; padding: 5px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-size: 0.82rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>topobadge</h1>
+    <p>Upload a GPX hike track, get a multicolor 3D-printable topo map back.</p>
+  </header>
+
+  <!-- Step 1: upload + fetch -->
+  <div class="card" id="fetchCard">
+    <h2>1. Fetch data</h2>
+    <div class="dropzone" id="dropzone">
+      <div>Drop a .gpx file here, or click to browse</div>
+      <div class="hint">Track only - no account, no upload leaves your machine</div>
+      <div class="filename" id="filename" hidden></div>
+    </div>
+    <input type="file" id="fileInput" accept=".gpx">
+
+    <div class="grid">
+      <div class="field">
+        <label>Base shape</label>
+        <div class="shape-toggle">
+          <button type="button" data-shape="hexagon" class="active">Hexagon</button>
+          <button type="button" data-shape="rectangle">Rectangle</button>
+        </div>
+        <input type="hidden" id="base_shape" value="hexagon">
+      </div>
+      <div class="field">
+        <label>Size (mm, longest dimension)</label>
+        <input type="number" id="size_mm" value="{{ defaults.size_mm }}" min="30" max="400" step="5">
+      </div>
+      <div class="field">
+        <label>Surrounding buffer (km)</label>
+        <input type="number" id="buffer_km" value="{{ defaults.buffer_km }}" min="0.2" max="5" step="0.1">
+      </div>
+      <div class="field">
+        <label>Grid resolution (mm/cell)</label>
+        <input type="number" id="mm_per_cell" value="{{ defaults.mm_per_cell }}" min="0.05" max="2" step="0.05">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="fetchBtn" disabled>Fetch Data</button>
+      <span class="status-line" id="fetchStatusLine"></span>
+    </div>
+  </div>
+
+  <div class="card" id="fetchLogCard" hidden>
+    <h2>Fetching&hellip;</h2>
+    <pre id="log"></pre>
+  </div>
+
+  <!-- Step 2: adjust + live preview -->
+  <div class="card" id="adjustCard" hidden>
+    <h2>2. Adjust &amp; preview</h2>
+    <div class="adjust-layout">
+      <div class="preview-box">
+        <img id="previewImg" alt="preview">
+        <div class="fetch-info" id="fetchInfo"></div>
+        <ul class="stats" id="statsList"></ul>
+      </div>
+      <div>
+        <div class="field" style="margin-bottom:14px;">
+          <label>Vertical exaggeration</label>
+          <input type="number" id="vertical_exaggeration" value="{{ defaults.vertical_exaggeration }}" min="1" max="5" step="0.1">
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label>Smoothing (rounds off blocky edges)</label>
+          <input type="number" id="smoothing" value="{{ defaults.smoothing }}" min="0" max="3" step="0.25">
+        </div>
+
+        <details open style="margin-top:0;">
+          <summary>Layer colors &amp; heights</summary>
+          <table class="layers">
+            <thead><tr><th>Layer</th><th>Color</th><th>Rise (mm)</th></tr></thead>
+            <tbody id="layersTableBody"></tbody>
+          </table>
+        </details>
+
+        <details open>
+          <summary>What maps to which layer</summary>
+          <table class="assign">
+            <tbody id="assignTableBody"></tbody>
+          </table>
+        </details>
+
+        <details>
+          <summary>Water sources</summary>
+          <div class="field checkbox" style="padding-top:8px;margin-bottom:8px;">
+            <input type="checkbox" id="use_vector_water" checked>
+            <label for="use_vector_water">Vector water (NHD / Esri)</label>
+          </div>
+          <div class="field checkbox" style="padding-top:0;margin-bottom:8px;">
+            <input type="checkbox" id="use_nlcd_water" checked>
+            <label for="use_nlcd_water">Blend in NLCD water</label>
+          </div>
+        </details>
+
+        <details>
+          <summary>Sizes</summary>
+          <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="field">
+              <label>Base thickness (mm)</label>
+              <input type="number" id="base_thickness_mm" value="{{ defaults.base_thickness_mm }}" min="1" max="10" step="0.5">
+            </div>
+            <div class="field">
+              <label>Inlay depth (mm)</label>
+              <input type="number" id="inlay_depth_mm" value="{{ defaults.inlay_depth_mm }}" min="0.2" max="3" step="0.1">
+            </div>
+            <div class="field">
+              <label>Trail width (mm)</label>
+              <input type="number" id="trail_width_mm" value="{{ defaults.trail_width_mm }}" min="1" max="10" step="0.5">
+            </div>
+            <div class="field">
+              <label>Water min width (mm)</label>
+              <input type="number" id="water_width_mm" value="{{ defaults.water_width_mm }}" min="0.5" max="8" step="0.5">
+            </div>
+            <div class="field">
+              <label>River width (mm)</label>
+              <input type="number" id="river_width_mm" value="{{ defaults.river_width_mm }}" min="0.5" max="10" step="0.5">
+            </div>
+            <div class="field">
+              <label>Road width (mm)</label>
+              <input type="number" id="road_width_mm" value="{{ defaults.road_width_mm }}" min="0.5" max="8" step="0.5">
+            </div>
+            <div class="field">
+              <label>Other trail width (mm)</label>
+              <input type="number" id="other_trail_width_mm" value="{{ defaults.other_trail_width_mm }}" min="0.5" max="8" step="0.5">
+            </div>
+            <div class="field">
+              <label>Landmark radius (mm)</label>
+              <input type="number" id="landmark_radius_mm" value="{{ defaults.landmark_radius_mm }}" min="0.5" max="8" step="0.5">
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Underside text plaque</summary>
+          <div class="field" style="margin-top:8px;margin-bottom:10px;">
+            <label>Text (one line per row - a hike name, date, who was there, ...)</label>
+            <textarea id="plaque_text" rows="3" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:0.9rem;font-family:inherit;resize:vertical;" placeholder="James Peak&#10;9/15/26&#10;Ben, Lillie, Brynn"></textarea>
+          </div>
+          <div class="grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="field">
+              <label>Plaque width (mm)</label>
+              <input type="number" id="plaque_width_mm" value="{{ defaults.plaque_width_mm }}" min="10" max="200" step="5">
+            </div>
+            <div class="field">
+              <label>Plaque depth (mm)</label>
+              <input type="number" id="plaque_depth_mm" value="{{ defaults.plaque_depth_mm }}" min="0.2" max="3" step="0.1">
+            </div>
+            <div class="field">
+              <label>Color</label>
+              <input type="color" id="plaque_color_hex" value="#{{ defaults.plaque_color_hex }}" style="width:100%;height:36px;padding:0;border:1px solid var(--border);border-radius:7px;background:var(--panel-2);cursor:pointer;">
+            </div>
+          </div>
+          <p style="color:var(--muted);font-size:0.8rem;margin:8px 0 0;">Engraved flush on the underside, mirrored automatically so it reads correctly when the model is flipped over. Needs a fine enough grid resolution to resolve legibly - if it doesn't fit, the build log will say exactly what <code style="background:var(--panel-2);padding:1px 5px;border-radius:4px;">Grid resolution (mm/cell)</code> (step 1) to re-fetch with.</p>
+        </details>
+
+        <div class="actions">
+          <button class="primary" id="buildBtn">Generate 3D Files</button>
+        </div>
+        <span class="status-line" id="previewStatusLine"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="buildLogCard" hidden>
+    <h2>Building&hellip;</h2>
+    <pre id="buildLog"></pre>
+    <div class="status-line" id="buildStatusLine" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card" id="resultCard" hidden>
+    <h2>3. Result</h2>
+    <div id="warningBox"></div>
+    <table class="qa" id="qaTable"></table>
+    <div class="files" id="filesBox"></div>
+  </div>
+
+  <div class="card" id="errorCard" hidden>
+    <div class="error" id="errorBox"></div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_LAYERS = {{ default_layers | tojson }};
+const DEFAULT_ASSIGNMENT = {{ default_layer_assignment | tojson }};
+const LAYER_LABELS = {{ layer_labels | tojson }};
+const SOURCE_LABELS = {{ source_class_labels | tojson }};
+
+// Mutable working state for the adjust step - {layer_id: {color_hex, rise_mm}} and {source_class: layer_id}.
+let layersState = JSON.parse(JSON.stringify(DEFAULT_LAYERS));
+let assignState = JSON.parse(JSON.stringify(DEFAULT_ASSIGNMENT));
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const filenameEl = document.getElementById('filename');
+const fetchBtn = document.getElementById('fetchBtn');
+const fetchStatusLine = document.getElementById('fetchStatusLine');
+const fetchLogCard = document.getElementById('fetchLogCard');
+const logEl = document.getElementById('log');
+const adjustCard = document.getElementById('adjustCard');
+const previewImg = document.getElementById('previewImg');
+const fetchInfoEl = document.getElementById('fetchInfo');
+const statsList = document.getElementById('statsList');
+const previewStatusLine = document.getElementById('previewStatusLine');
+const buildBtn = document.getElementById('buildBtn');
+const buildLogCard = document.getElementById('buildLogCard');
+const buildLogEl = document.getElementById('buildLog');
+const buildStatusLine = document.getElementById('buildStatusLine');
+const resultCard = document.getElementById('resultCard');
+const errorCard = document.getElementById('errorCard');
+const errorBox = document.getElementById('errorBox');
+const warningBox = document.getElementById('warningBox');
+const qaTable = document.getElementById('qaTable');
+const filesBox = document.getElementById('filesBox');
+const layersTableBody = document.getElementById('layersTableBody');
+const assignTableBody = document.getElementById('assignTableBody');
+
+let selectedFile = null;
+let jobId = null;
+
+// ---- Build the layer-color/rise table and the source-assignment table ----
+
+function buildLayersTable() {
+  layersTableBody.innerHTML = Object.keys(DEFAULT_LAYERS).map(layerId => {
+    const spec = layersState[layerId];
+    const label = LAYER_LABELS[layerId] || layerId;
+    const riseDisabled = layerId === 'base' ? 'disabled' : '';
+    return `<tr>
+      <td>${label}</td>
+      <td><input type="color" data-layer-color="${layerId}" value="#${spec.color_hex}"></td>
+      <td><input type="number" data-layer-rise="${layerId}" value="${spec.rise_mm}" min="0" max="5" step="0.1" ${riseDisabled}></td>
+    </tr>`;
+  }).join('');
+
+  layersTableBody.querySelectorAll('[data-layer-color]').forEach(el => {
+    el.addEventListener('input', () => {
+      layersState[el.dataset.layerColor].color_hex = el.value.replace('#', '').toUpperCase();
+      schedulePreview();
+    });
+  });
+  layersTableBody.querySelectorAll('[data-layer-rise]').forEach(el => {
+    el.addEventListener('input', () => {
+      layersState[el.dataset.layerRise].rise_mm = parseFloat(el.value) || 0;
+      schedulePreview();
+    });
+  });
+}
+
+function buildAssignTable() {
+  const layerOptions = Object.keys(DEFAULT_LAYERS)
+    .map(id => `<option value="${id}">${LAYER_LABELS[id] || id}</option>`).join('');
+  assignTableBody.innerHTML = Object.keys(DEFAULT_ASSIGNMENT).map(sourceId => {
+    const label = SOURCE_LABELS[sourceId] || sourceId;
+    return `<tr>
+      <td>${label}</td>
+      <td><select data-assign="${sourceId}">${layerOptions}</select></td>
+    </tr>`;
+  }).join('');
+
+  assignTableBody.querySelectorAll('[data-assign]').forEach(el => {
+    el.value = assignState[el.dataset.assign];
+    el.addEventListener('change', () => {
+      assignState[el.dataset.assign] = el.value;
+      schedulePreview();
+    });
+  });
+}
+
+buildLayersTable();
+buildAssignTable();
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  selectedFile = f;
+  filenameEl.textContent = f.name;
+  filenameEl.hidden = false;
+  fetchBtn.disabled = false;
+}
+
+document.querySelectorAll('.shape-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.shape-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('base_shape').value = btn.dataset.shape;
+  });
+});
+
+const FETCH_OPTION_IDS = ['buffer_km', 'size_mm', 'mm_per_cell', 'base_shape'];
+const ADJUST_SCALAR_IDS = [
+  'vertical_exaggeration', 'base_thickness_mm', 'inlay_depth_mm',
+  'trail_width_mm', 'water_width_mm', 'river_width_mm',
+  'road_width_mm', 'other_trail_width_mm', 'landmark_radius_mm', 'smoothing'
+];
+
+function adjustFormData() {
+  const form = new FormData();
+  for (const id of ADJUST_SCALAR_IDS) form.append(id, document.getElementById(id).value);
+  form.append('use_vector_water', document.getElementById('use_vector_water').checked);
+  form.append('use_nlcd_water', document.getElementById('use_nlcd_water').checked);
+  form.append('layers_json', JSON.stringify({ layers: layersState, layer_assignment: assignState }));
+  form.append('plaque_text', document.getElementById('plaque_text').value);
+  form.append('plaque_width_mm', document.getElementById('plaque_width_mm').value);
+  form.append('plaque_depth_mm', document.getElementById('plaque_depth_mm').value);
+  form.append('plaque_color_hex', document.getElementById('plaque_color_hex').value.replace('#', ''));
+  return form;
+}
+
+// ---- Step 1: fetch ----
+
+let fetchPollTimer = null;
+let fetchCursor = 0;
+
+fetchBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  fetchBtn.disabled = true;
+  fetchLogCard.hidden = false;
+  adjustCard.hidden = true;
+  buildLogCard.hidden = true;
+  resultCard.hidden = true;
+  errorCard.hidden = true;
+  logEl.textContent = '';
+  fetchCursor = 0;
+  fetchStatusLine.textContent = 'Uploading...';
+
+  const form = new FormData();
+  form.append('gpx', selectedFile);
+  for (const id of FETCH_OPTION_IDS) form.append(id, document.getElementById(id).value);
+
+  let resp, data;
+  try {
+    resp = await fetch('/api/fetch', { method: 'POST', body: form });
+    data = await resp.json();
+  } catch (e) {
+    showError('Could not reach the server: ' + e);
+    fetchBtn.disabled = false;
+    return;
+  }
+  if (!resp.ok) { showError(data.error || 'Fetch failed'); fetchBtn.disabled = false; return; }
+  jobId = data.job_id;
+
+  fetchPollTimer = setInterval(pollFetch, 1200);
+  pollFetch();
+});
+
+async function pollFetch() {
+  let data;
+  try {
+    const resp = await fetch(`/api/jobs/${jobId}?since=${fetchCursor}`);
+    data = await resp.json();
+  } catch (e) { return; }
+  if (data.log && data.log.length) {
+    logEl.textContent += data.log.join('\n') + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+    fetchCursor = data.next_cursor;
+  }
+  fetchStatusLine.textContent = `${data.state} - ${data.elapsed_s}s elapsed`;
+
+  if (data.state === 'ready') {
+    clearInterval(fetchPollTimer);
+    fetchBtn.disabled = false;
+    onFetched(data);
+  } else if (data.state === 'error') {
+    clearInterval(fetchPollTimer);
+    fetchBtn.disabled = false;
+    showError(data.error || 'Fetch failed');
+  }
+}
+
+function onFetched(data) {
+  adjustCard.hidden = false;
+  if (data.fetch_info) {
+    let info = `Elevation ${data.fetch_info.elevation_min}m - ${data.fetch_info.elevation_max}m, ${data.fetch_info.grid_cols}x${data.fetch_info.grid_rows} cells`;
+    if (data.fetch_info.warnings && data.fetch_info.warnings.length) {
+      info += ' | ' + data.fetch_info.warnings.join(' ');
+    }
+    fetchInfoEl.textContent = info;
+  }
+  requestPreview();
+}
+
+// ---- Step 2: adjust / live preview ----
+
+let previewDebounce = null;
+function schedulePreview() {
+  clearTimeout(previewDebounce);
+  previewDebounce = setTimeout(requestPreview, 300);
+}
+const PLAQUE_IDS = ['plaque_text', 'plaque_width_mm', 'plaque_depth_mm', 'plaque_color_hex'];
+[...ADJUST_SCALAR_IDS, 'use_vector_water', 'use_nlcd_water', ...PLAQUE_IDS].forEach(id => {
+  document.getElementById(id).addEventListener('input', schedulePreview);
+});
+
+async function requestPreview() {
+  if (!jobId) return;
+  previewStatusLine.textContent = 'Updating preview...';
+  let resp, data;
+  try {
+    resp = await fetch(`/api/jobs/${jobId}/preview`, { method: 'POST', body: adjustFormData() });
+    data = await resp.json();
+  } catch (e) {
+    previewStatusLine.textContent = 'Preview update failed: ' + e;
+    return;
+  }
+  if (!resp.ok) { previewStatusLine.textContent = data.error || 'Preview update failed'; return; }
+  previewImg.src = `/api/jobs/${jobId}/files/${data.preview_file}?t=${Date.now()}`;
+  previewStatusLine.textContent = data.plaque_warning || '';
+  renderStats(data.stats);
+}
+
+function renderStats(stats) {
+  statsList.innerHTML = Object.keys(DEFAULT_LAYERS)
+    .filter(name => name !== 'base' && stats[name] !== undefined)
+    .map(name => {
+      const color = '#' + layersState[name].color_hex;
+      const label = LAYER_LABELS[name] || name;
+      return `<li><span><span class="swatch" style="background:${color}"></span>${label}</span><span>${stats[name]}%</span></li>`;
+    })
+    .join('');
+}
+
+// ---- Step 3: build ----
+
+let buildPollTimer = null;
+let buildCursor = 0;
+
+buildBtn.addEventListener('click', async () => {
+  if (!jobId) return;
+  buildBtn.disabled = true;
+  buildLogCard.hidden = false;
+  resultCard.hidden = true;
+  errorCard.hidden = true;
+  buildLogEl.textContent = '';
+  buildCursor = 0;
+
+  let resp, data;
+  try {
+    resp = await fetch(`/api/jobs/${jobId}/build`, { method: 'POST', body: adjustFormData() });
+    data = await resp.json();
+  } catch (e) {
+    showError('Could not reach the server: ' + e);
+    buildBtn.disabled = false;
+    return;
+  }
+  if (!resp.ok) { showError(data.error || 'Build failed to start'); buildBtn.disabled = false; return; }
+
+  buildPollTimer = setInterval(pollBuild, 1200);
+  pollBuild();
+});
+
+async function pollBuild() {
+  let data;
+  try {
+    const resp = await fetch(`/api/jobs/${jobId}?since=${buildCursor}`);
+    data = await resp.json();
+  } catch (e) { return; }
+  if (data.log && data.log.length) {
+    buildLogEl.textContent += data.log.join('\n') + '\n';
+    buildLogEl.scrollTop = buildLogEl.scrollHeight;
+    buildCursor = data.next_cursor;
+  }
+  buildStatusLine.textContent = `${data.state} - ${data.elapsed_s}s elapsed`;
+
+  if (data.state === 'done') {
+    clearInterval(buildPollTimer);
+    buildBtn.disabled = false;
+    showResult(data);
+  } else if (data.state === 'error') {
+    clearInterval(buildPollTimer);
+    buildBtn.disabled = false;
+    showError(data.error || 'Build failed');
+  }
+}
+
+function showResult(data) {
+  resultCard.hidden = false;
+  warningBox.innerHTML = data.landcover_warning
+    ? `<div class="warning">${escapeHtml(data.landcover_warning)}</div>` : '';
+
+  let rows = '<tr><th>Part</th><th>Faces</th><th>Watertight</th><th>Volume (mm&sup3;)</th></tr>';
+  for (const p of data.result.parts) {
+    const color = '#' + ((layersState[p.name] && layersState[p.name].color_hex) || '999999');
+    rows += `<tr><td><span class="swatch" style="background:${color}"></span>${LAYER_LABELS[p.name] || p.name}</td>` +
+            `<td>${p.faces}</td><td>${p.watertight}</td><td>${p.volume_mm3}</td></tr>`;
+  }
+  qaTable.innerHTML = rows;
+
+  if (data.result.preview_file) {
+    previewImg.src = `/api/jobs/${jobId}/files/${data.result.preview_file}?t=${Date.now()}`;
+  }
+
+  filesBox.innerHTML = data.result.files
+    .filter(f => !f.toLowerCase().endsWith('.png'))
+    .map(f => `<a href="/api/jobs/${jobId}/files/${f}" download>${f}</a>`).join('');
+}
+
+function showError(msg) {
+  errorCard.hidden = false;
+  errorBox.textContent = msg;
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>

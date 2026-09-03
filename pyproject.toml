@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "topobadge"
+version = "0.1.0"
+description = "Turn a GPX hike track into a multicolor 3D-printable topo map"
+requires-python = ">=3.11"
+dependencies = [
+    "gpxpy>=1.6",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+    "tifffile>=2024.1",
+    "requests>=2.31",
+    "trimesh>=4.0",
+    "click>=8.1",
+    "Pillow>=10.0",
+    "rasterio>=1.3",
+    "Flask>=3.0",
+]
+
+[project.scripts]
+topobadge = "topobadge.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["topobadge*"]
+
+[tool.setuptools.package-data]
+topobadge = ["templates/*.html"]

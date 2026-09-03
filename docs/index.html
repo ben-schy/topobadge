@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>topobadge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #e9ede9;
+    --surface: #ffffff;
+    --surface-2: #f2f4ef;
+    --border: #d2d9cf;
+    --border-strong: #b7c1b2;
+    --text: #1b241d;
+    --muted: #55645a;
+    --accent: #3d7a49;
+    --accent-ink: #2d5c37;
+    --water: #2f6fa8;
+    --trail: #8a5a2e;
+    --ice-border: #b9c2c8;
+    --danger: #a8402f;
+    --danger-bg: #fbeae7;
+    --warn: #8a6a1f;
+    --warn-bg: #faf1de;
+    --code-bg: #eef1ec;
+    --shadow: 0 1px 2px rgba(20,30,20,0.06), 0 8px 24px rgba(20,30,20,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181a;
+      --surface: #1b2124;
+      --surface-2: #20272a;
+      --border: #2c3438;
+      --border-strong: #3b464b;
+      --text: #e7ece8;
+      --muted: #99a69c;
+      --accent: #6fbf7e;
+      --accent-ink: #8fd49b;
+      --water: #6fa9dd;
+      --trail: #cf9860;
+      --ice-border: #4a565c;
+      --danger: #e08a7c;
+      --danger-bg: #3a2521;
+      --warn: #dcbf7c;
+      --warn-bg: #362e1c;
+      --code-bg: #0f1416;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181a;
+    --surface: #1b2124;
+    --surface-2: #20272a;
+    --border: #2c3438;
+    --border-strong: #3b464b;
+    --text: #e7ece8;
+    --muted: #99a69c;
+    --accent: #6fbf7e;
+    --accent-ink: #8fd49b;
+    --water: #6fa9dd;
+    --trail: #cf9860;
+    --ice-border: #4a565c;
+    --danger: #e08a7c;
+    --danger-bg: #3a2521;
+    --warn: #dcbf7c;
+    --warn-bg: #362e1c;
+    --code-bg: #0f1416;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1, h2, h3 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    line-height: 1.2;
+    margin: 0 0 0.5em;
+  }
+  code, pre, .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  a { color: var(--accent-ink); }
+  p { max-width: 68ch; }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  nav.side {
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  nav.side .brand { font-family: "Source Serif 4", serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+  nav.side .tagline { color: var(--muted); font-size: 0.82rem; margin-bottom: 22px; }
+  nav.side ul { list-style: none; margin: 0; padding: 0; }
+  nav.side li { margin-bottom: 2px; }
+  nav.side a {
+    display: block; padding: 6px 10px; border-radius: 6px; color: var(--muted);
+    text-decoration: none; font-size: 0.9rem;
+  }
+  nav.side a:hover { background: var(--surface-2); color: var(--text); }
+
+  main { padding: 0; }
+  .hero {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    padding: 64px 56px 48px;
+  }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.5; }
+  .hero-inner { position: relative; max-width: 640px; }
+  .hero h1 { font-size: 2.6rem; margin-bottom: 10px; }
+  .hero .lede { color: var(--muted); font-size: 1.08rem; max-width: 52ch; }
+  .hero .cta-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 8px;
+    text-decoration: none; font-weight: 600; font-size: 0.92rem; border: none;
+    box-shadow: var(--shadow);
+  }
+  .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); box-shadow: none; }
+
+  section { padding: 44px 56px; max-width: 900px; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: none; }
+  section > h2 { font-size: 1.5rem; margin-bottom: 6px; }
+  section > .kicker { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  section > p:first-of-type { margin-top: 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+  .legend .chip {
+    display: flex; align-items: center; gap: 8px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px 7px 10px; font-size: 0.86rem;
+  }
+  .legend .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; flex: none; }
+
+  .steps { counter-reset: step; display: flex; flex-direction: column; gap: 0; margin: 22px 0; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .step:first-child { border-top: none; }
+  .step .num {
+    counter-increment: step; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center; font-size: 0.82rem; color: var(--muted);
+  }
+  .step .num::before { content: counter(step); }
+  .step h3 { font-size: 1rem; font-family: "IBM Plex Sans", sans-serif; font-weight: 600; margin-bottom: 3px; }
+  .step p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: 0.86rem; margin: 14px 0;
+  }
+  code.inline { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 0.88em; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .card h3 { font-size: 0.95rem; margin-bottom: 6px; font-family: "IBM Plex Sans", sans-serif; font-weight: 600; }
+  .card p { font-size: 0.88rem; color: var(--muted); margin: 0; }
+
+  .figure { margin: 24px 0; }
+  .figure img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; box-shadow: var(--shadow); }
+  .figure figcaption { font-size: 0.84rem; color: var(--muted); margin-top: 8px; max-width: 60ch; }
+
+  .table-wrap { overflow-x: auto; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.flag, td.num { font-family: "IBM Plex Mono", monospace; font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .callout { border-radius: 10px; padding: 14px 16px; font-size: 0.9rem; margin: 18px 0; border: 1px solid; }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn); color: var(--text); }
+  .callout.danger { background: var(--danger-bg); border-color: var(--danger); color: var(--text); }
+  .callout strong { display: block; margin-bottom: 3px; }
+
+  footer { padding: 32px 56px 64px; color: var(--muted); font-size: 0.85rem; }
+
+  .mobile-nav-toggle { display: none; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 16px 20px; }
+    nav.side ul { display: flex; flex-wrap: wrap; gap: 2px; }
+    nav.side li { margin: 0; }
+    .hero, section, footer { padding-left: 24px; padding-right: 24px; }
+    .hero h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="side">
+    <div class="brand">topobadge</div>
+    <div class="tagline">GPX &rarr; 3D-printable topo tile</div>
+    <ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#quick-start">Quick start</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#web-ui">Web UI</a></li>
+      <li><a href="#layers">Layers &amp; sources</a></li>
+      <li><a href="#plaque">Underside plaque</a></li>
+      <li><a href="#cli">CLI reference</a></li>
+      <li><a href="#parameters">Parameters</a></li>
+      <li><a href="#output">Output files</a></li>
+      <li><a href="#printing">Printing it</a></li>
+      <li><a href="#data-sources">Data sources</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section class="hero" id="overview">
+      <canvas id="contours"></canvas>
+      <div class="hero-inner">
+        <div class="kicker" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.8rem;margin-bottom:10px;">GPX &rarr; multicolor 3D print</div>
+        <h1>Turn a hike into a hex tile you can print.</h1>
+        <p class="lede">Upload a GPX track. topobadge pulls real elevation and land-cover data, builds a small hexagonal relief map of the hike and its surroundings, and hands you a ready-to-print 3MF &mdash; grey rock, blue water, green forest, and white ice inlaid flush into the terrain, with the trail itself the only thing raised above the surface.</p>
+        <div class="cta-row">
+          <a class="btn" href="#quick-start">Get started</a>
+          <a class="btn secondary" href="#how-it-works">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="legend-section">
+      <div class="kicker">The palette</div>
+      <h2>Five materials, one map</h2>
+      <p>Every part of the terrain is sorted into a source class - trees, shrub, grassland, water, ice, roads, named landmarks, and more - and you decide which output layer each one prints as: merge grassland into rock, send ice to the water color instead of its own, or give roads their own layer entirely. Nothing here is hardcoded; see <a href="#layers">Layers &amp; sources</a>.</p>
+      <div class="legend">
+        <span class="chip"><span class="swatch" style="background:#808080"></span>Base rock &mdash; #808080</span>
+        <span class="chip"><span class="swatch" style="background:var(--water)"></span>Water &mdash; #2E75B6</span>
+        <span class="chip"><span class="swatch" style="background:var(--accent)"></span>Vegetation &mdash; #3C8C3C</span>
+        <span class="chip"><span class="swatch" style="background:#fff;border:1px solid var(--ice-border)"></span>Ice / glacier &mdash; #FFFFFF</span>
+        <span class="chip"><span class="swatch" style="background:var(--trail)"></span>Trail &mdash; #8B5A2B</span>
+      </div>
+      <figure class="figure">
+        <img id="preview-image" src="data:image/png;base64,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" alt="Rendered preview of a topobadge hexagon build, showing terrain relief and a trail route">
+        <figcaption>A real build output (top-down preview) &mdash; hexagon footprint, vegetation, water, the hike route, and named landmarks (gold dots: summits, valleys, and other GNIS-gazetteer features) all as independently-assigned layers.</figcaption>
+      </figure>
+    </section>
+
+    <section id="quick-start">
+      <div class="kicker">Get running</div>
+      <h2>Quick start</h2>
+      <p>Everything runs locally &mdash; your GPX file and the generated models never leave your machine except to fetch public elevation/map data.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="num"></div>
+          <div><h3>Install Python 3.11+</h3><p>If you don't already have it: <a href="https://python.org" target="_blank" rel="noopener">python.org</a>.</p></div>
+        </div>
+        <div class="step">
+          <div class="num"></div>
+          <div><h3>Download the project and run <code class="inline">run.bat</code></h3><p>First run sets up a virtual environment and installs dependencies automatically; every run after that just starts the app.</p></div>
+        </div>
+        <div class="step">
+          <div class="num"></div>
+          <div><h3>Your browser opens to the local web UI</h3><p>Drag in a <code class="inline">.gpx</code> file, pick a size, click Build.</p></div>
+        </div>
+        <div class="step">
+          <div class="num"></div>
+          <div><h3>Download <code class="inline">combined.3mf</code> and print</h3><p>Or grab the individual <code class="inline">.stl</code> files for manual multi-material assignment in your slicer.</p></div>
+        </div>
+      </div>
+      <p>Prefer the command line?</p>
+      <pre class="code">pip install -e .
+topobadge build my_hike.gpx
+topobadge serve   # same thing, but as a local web page</pre>
+    </section>
+
+    <section id="how-it-works">
+      <div class="kicker">Under the hood</div>
+      <h2>How it works</h2>
+      <p>Five stages, all running on your machine:</p>
+      <div class="cards">
+        <div class="card"><h3>1 &middot; Track &amp; frame</h3><p>Parse the GPX, pick a local UTM projection, and frame a hexagonal (or rectangular) working area around the track plus a buffer of surrounding context.</p></div>
+        <div class="card"><h3>2 &middot; Elevation</h3><p>Fetch a real elevation grid for that area from USGS 3DEP, pre-resampled server-side to exactly the mesh resolution needed.</p></div>
+        <div class="card"><h3>3 &middot; Land cover &amp; overlays</h3><p>Fetch lake/stream/river features (USGS NHD, falling back to Esri Living Atlas), a vegetation/ice classification (NLCD), roads and other trails (USGS Transportation), and named landmarks (USGS GNIS) - each its own independent source class.</p></div>
+        <div class="card"><h3>4 &middot; Compose</h3><p>Group every source class into whichever output layer you assigned it to, smooth the resulting boundaries, and build a solid grey terrain base notched wherever a layer sits so flush layers inlay into the surface instead of stacking on top of it; each layer's own rise (0 by default, positive for the trail) is what reads as physically raised.</p></div>
+        <div class="card"><h3>5 &middot; Export</h3><p>Write each colored part as its own STL, bundle them into one colored 3MF, and render a top-down preview image.</p></div>
+      </div>
+      <p>The mesh step is the fiddly part. Each colored region is built directly from the same elevation grid as the base terrain (no boolean/CSG operations), included at whole-grid-cell granularity so diagonal-only touching regions can't produce a non-manifold, unprintable seam. Water, forest, and ice sit in a shallow pocket notched into the base so their tops land exactly at the surrounding terrain height &mdash; flush, not a bump. The trail uses the same pocket for a solid bond, but its top rises above the surrounding surface, so it's the one thing on the model you can actually feel.</p>
+    </section>
+
+    <section id="web-ui">
+      <div class="kicker">The easy way</div>
+      <h2>Web UI</h2>
+      <p>Run <code class="inline">topobadge serve</code> (or double-click <code class="inline">run.bat</code>) and a page opens in your browser, in three steps. See <a href="#layers">Layers &amp; sources</a> for what the assignment table in step 2 actually controls.</p>
+      <div class="steps">
+        <div class="step"><div class="num"></div><div><h3>Fetch</h3><p>Drag in a GPX file, choose a size and shape, click <em>Fetch Data</em>. This is the only network-bound step (elevation, water, and land-cover data for the area) - typically 5-20 seconds.</p></div></div>
+        <div class="step"><div class="num"></div><div><h3>Adjust &amp; preview</h3><p>Reassign any source class to any color layer, edit each layer's color and rise, tune widths and smoothing - the preview updates in well under a second per change, since nothing here touches the network again.</p></div></div>
+        <div class="step"><div class="num"></div><div><h3>Generate</h3><p>Click <em>Generate 3D Files</em> once it looks right, to build the actual meshes and get your STL/3MF/preview downloads.</p></div></div>
+      </div>
+      <div class="callout warn">
+        <strong>Only the first step touches the network.</strong>
+        Every data source topobadge uses is a government API (USGS 3DEP, NHD, Esri Living Atlas, and NLCD) rather than shared crowd infrastructure, so fetching is typically done in 5-20 seconds - and if a water source is briefly unreachable, topobadge automatically falls back to an independent one rather than failing the fetch - see <a href="#troubleshooting">Troubleshooting</a>.
+      </div>
+    </section>
+
+    <section id="layers">
+      <div class="kicker">The core idea</div>
+      <h2>Layers &amp; sources</h2>
+      <p>Every piece of geometry topobadge can draw - trees, shrub, grassland, water, ice, roads, other trails, named landmarks, and your own hike route - is a <strong>source class</strong>. Every source class is assigned to an <strong>output layer</strong>, and it's the layer that actually has a color and a height. Multiple source classes can share one layer (that's how trees + shrub + grassland all become one green vegetation layer by default), or you can split them apart, merge one into another, or hide any of them by assigning it to <code class="inline">base</code>.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Source class</th><th>Default layer</th></tr></thead>
+          <tbody>
+            <tr><td>Trees, shrub, grassland, pasture/crops, wetland</td><td>Vegetation (green)</td></tr>
+            <tr><td>Water (lakes, streams, rivers)</td><td>Water (blue)</td></tr>
+            <tr><td>Ice / permanent snow</td><td>Ice (white)</td></tr>
+            <tr><td>Your hike route</td><td>Trail (brown, raised)</td></tr>
+            <tr><td>Roads, other trails, named landmarks</td><td>Base (hidden) &mdash; opt in to show them</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Two examples this was built around: reassign <code class="inline">ice</code> to the water layer (or to base, for plain rock) instead of giving it a separate color; reassign <code class="inline">grassland</code> to base while leaving <code class="inline">trees</code> on vegetation, so only actual forest reads as green.</p>
+      <p>Each layer also has its own color and <strong>rise</strong> &mdash; how far it sits above the surrounding surface. 0 means flush/inlaid (water and vegetation by default); positive means physically raised, like the trail. Any layer can be raised, not just the trail - a small default rise on the landmarks layer is what makes them tactile pins rather than flat markers. Region boundaries are also smoothed (rounding off blocky grid-cell corners) before meshing, tunable via the smoothing control.</p>
+      <p>In the web UI, this is the "Layer colors &amp; heights" and "What maps to which layer" tables in step 2. From the CLI, use <code class="inline">--vegetation-preset</code> for the common case, or <code class="inline">--layers-json</code> for full control:</p>
+      <pre class="code">{
+  "layers": {
+    "roads": {"color_hex": "4A4A4A", "rise_mm": 0}
+  },
+  "layer_assignment": {
+    "ice": "water",
+    "grassland": "base",
+    "roads": "roads",
+    "landmarks": "trail"
+  }
+}</pre>
+    </section>
+
+    <section id="cli">
+      <div class="kicker">Scriptable</div>
+      <h2>CLI reference</h2>
+      <pre class="code">topobadge build TRACK.gpx [OPTIONS]
+topobadge serve [--host 127.0.0.1] [--port 5151] [--no-open-browser]</pre>
+      <p>Every option below has a sensible default &mdash; the shortest useful invocation is just <code class="inline">topobadge build my_hike.gpx</code>.</p>
+    </section>
+
+    <section id="parameters">
+      <div class="kicker">Every knob</div>
+      <h2>Parameters</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flag</th><th>Default</th><th>What it controls</th></tr></thead>
+          <tbody>
+            <tr><td class="flag">--base-shape</td><td class="num">hexagon</td><td>Outer footprint: <code class="inline">hexagon</code> or <code class="inline">rectangle</code>. The hexagon's point-to-point width equals <code class="inline">--size-mm</code>.</td></tr>
+            <tr><td class="flag">--size-mm</td><td class="num">80</td><td>Longest horizontal dimension of the printed model.</td></tr>
+            <tr><td class="flag">--vertical-exaggeration</td><td class="num">2.0</td><td>Relief multiplier so terrain reads clearly at this horizontal scale.</td></tr>
+            <tr><td class="flag">--buffer-km</td><td class="num">1.2</td><td>Surrounding context fetched beyond the track's own bounding box.</td></tr>
+            <tr><td class="flag">--mm-per-cell</td><td class="num">0.8</td><td>Mesh resolution in print-space mm per grid cell.</td></tr>
+            <tr><td class="flag">--base-thickness-mm</td><td class="num">3.0</td><td>Minimum floor thickness below the lowest terrain point.</td></tr>
+            <tr><td class="flag">--inlay-depth-mm</td><td class="num">0.8</td><td>How deep water/forest/ice are inlaid below the surface, flush rather than raised (&asymp;4 layers at 0.2mm); also the trail's own bonding depth.</td></tr>
+            <tr><td class="flag">--trail-height-mm</td><td class="num">2.0</td><td>How far the trail alone rises above the surrounding (flush) surface (&asymp;10 layers at 0.2mm).</td></tr>
+            <tr><td class="flag">--trail-width-mm</td><td class="num">3.0</td><td>Printed width of the raised trail ribbon.</td></tr>
+            <tr><td class="flag">--water-width-mm</td><td class="num">2.0</td><td>Minimum width for streams/canals and small ponds, so they survive cleanup at this resolution.</td></tr>
+            <tr><td class="flag">--river-width-mm</td><td class="num">4.0</td><td>Printed width for rivers specifically, wider than ordinary streams.</td></tr>
+            <tr><td class="flag">--road-width-mm</td><td class="num">2.0</td><td>Printed width for roads, if assigned to a visible layer.</td></tr>
+            <tr><td class="flag">--other-trail-width-mm</td><td class="num">2.0</td><td>Printed width for other (non-hike) trails, if assigned to a visible layer.</td></tr>
+            <tr><td class="flag">--landmark-radius-mm</td><td class="num">2.5</td><td>Printed radius of each named-landmark marker, if assigned to a visible layer.</td></tr>
+            <tr><td class="flag">--smoothing</td><td class="num">1.0</td><td>Rounds off blocky grid-cell corners on region boundaries (gaussian-blur-then-rethreshold strength, in grid cells). 0 disables it.</td></tr>
+            <tr><td class="flag">--use-vector-water / --no-...</td><td class="num">on</td><td>Use NHD (falling back to Esri Living Atlas) for lakes/streams/rivers.</td></tr>
+            <tr><td class="flag">--use-nlcd-water / --no-...</td><td class="num">on</td><td>Also blend in NLCD's own "open water" class, free since it's already fetched for vegetation/ice.</td></tr>
+            <tr><td class="flag">--vegetation-preset</td><td class="num">all</td><td><code class="inline">all</code> includes shrub/grassland/pasture/wetland as vegetation; <code class="inline">trees-only</code> hides them. For per-type control, use --layers-json.</td></tr>
+            <tr><td class="flag">--layers-json PATH</td><td class="num">&mdash;</td><td>Full override: a JSON file with custom layer colors/heights and/or source-class assignment. See <a href="#layers">Layers &amp; sources</a>.</td></tr>
+            <tr><td class="flag">--out-dir</td><td class="num">&lt;gpx name&gt;_topo</td><td>Where output files are written.</td></tr>
+            <tr><td class="flag">--preview / --no-preview</td><td class="num">on</td><td>Write a top-down colored <code class="inline">preview.png</code> alongside the model files.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="output">
+      <div class="kicker">What you get</div>
+      <h2>Output files</h2>
+      <p>Written to <code class="inline">&lt;gpx name&gt;_topo/</code> (or <code class="inline">--out-dir</code>) &mdash; only the parts actually present in the hike's area are written:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Contents</th></tr></thead>
+          <tbody>
+            <tr><td class="flag">base.stl</td><td>The grey terrain solid &mdash; always present.</td></tr>
+            <tr><td class="flag">water.stl</td><td>Lakes, ponds, streams, and rivers, where present.</td></tr>
+            <tr><td class="flag">vegetation.stl</td><td>Trees/shrub/grassland/etc. assigned to the vegetation layer, where present.</td></tr>
+            <tr><td class="flag">ice.stl</td><td>Glaciers/permanent snow, where present (and not merged elsewhere).</td></tr>
+            <tr><td class="flag">trail.stl</td><td>The hike route itself, raised above everything else.</td></tr>
+            <tr><td class="flag">roads.stl / other_trails.stl / landmarks.stl</td><td>Only written if you assign that source to a visible layer - hidden (merged into the base) by default.</td></tr>
+            <tr><td class="flag">combined.3mf</td><td>All present parts in one file, with color assigned per part.</td></tr>
+            <tr><td class="flag">preview.png</td><td>A top-down colored render for a quick sanity check.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="plaque">
+      <div class="kicker">A personal touch</div>
+      <h2>Underside plaque</h2>
+      <p>Optional text - a hike name, date, who was there - engraved flush into the underside in its own color, separate from the base rock. Set it in the web UI's "Underside text plaque" panel (step 2), or on the CLI:</p>
+      <pre class="code">topobadge build my_hike.gpx --mm-per-cell 0.35 \
+  --plaque-text "James Peak\n9/15/26\nBen, Lillie, Brynn" \
+  --plaque-width-mm 70</pre>
+      <p>The text is mirrored automatically, the same convention used for a coin's reverse or a PCB's bottom silkscreen: the model is meant to be flipped over like a page (rotated about the vertical axis) to read it, so the source art is authored mirrored ahead of time.</p>
+      <div class="callout warn">
+        <strong>Text needs a fine enough grid to resolve.</strong>
+        The plaque is built on the same grid as everything else, so short strokes in small letters need enough grid cells to form at all. If a build logs a warning that the plaque didn't render, it tells you exactly which <code class="inline">--mm-per-cell</code> value (a step 1 / fetch-stage setting, so it needs a re-fetch) would fit it - as a rule of thumb, aim for roughly 8 grid cells per character across the longest line. Shorter text, a wider plaque, or a larger model all help too.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flag</th><th>Default</th><th>What it controls</th></tr></thead>
+          <tbody>
+            <tr><td class="flag">--plaque-text</td><td class="num">&mdash;</td><td>The text (use literal <code class="inline">\n</code> for multiple lines). Blank disables the plaque entirely.</td></tr>
+            <tr><td class="flag">--plaque-text-file PATH</td><td class="num">&mdash;</td><td>Read the text from a file instead - easier than escaping newlines on the command line.</td></tr>
+            <tr><td class="flag">--plaque-width-mm</td><td class="num">50.0</td><td>Printed width of the text.</td></tr>
+            <tr><td class="flag">--plaque-depth-mm</td><td class="num">0.8</td><td>How deep it's inlaid into the floor.</td></tr>
+            <tr><td class="flag">--plaque-color</td><td class="num">8B5A2B</td><td>Hex color (no <code class="inline">#</code>) for the text.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="printing">
+      <div class="kicker">From file to filament</div>
+      <h2>Printing it</h2>
+      <p>For a single-material printer, <code class="inline">base.stl</code> alone already prints a clean relief tile. For multi-material printing (Bambu AMS, Prusa MMU, or similar):</p>
+      <div class="cards">
+        <div class="card"><h3>Recommended: import the STLs together</h3><p>Drag all the <code class="inline">.stl</code> files into your slicer at once &mdash; they share one coordinate origin, so they'll land in the right place automatically. Assign a filament color to each object in the part list.</p></div>
+        <div class="card"><h3>Convenience: open combined.3mf</h3><p>One file, colors already assigned. Works well in most slicers, but per-object color import in Bambu Studio specifically has had version-dependent bugs &mdash; if colors don't come through right, fall back to the STL method above.</p></div>
+      </div>
+    </section>
+
+    <section id="data-sources">
+      <div class="kicker">Where the data comes from</div>
+      <h2>Data sources</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Source</th><th>Coverage</th></tr></thead>
+          <tbody>
+            <tr><td>Elevation</td><td>USGS 3DEP (The National Map), no API key</td><td>United States only</td></tr>
+            <tr><td>Lakes, ponds, streams, rivers</td><td>USGS National Hydrography Dataset (NHD), no API key</td><td>United States only</td></tr>
+            <tr><td>&nbsp;&nbsp;- fallback if NHD is unavailable</td><td>Esri Living Atlas hydrography layers, no API key</td><td>United States only</td></tr>
+            <tr><td>&nbsp;&nbsp;- blended in regardless (free)</td><td>NLCD's own "open water" class</td><td>United States only (lower 48)</td></tr>
+            <tr><td>Vegetation (forest, shrub, grassland, wetland), permanent snow/ice</td><td>USGS National Land Cover Database (NLCD), no API key</td><td>United States only (lower 48)</td></tr>
+            <tr><td>Roads, other (non-hike) trails</td><td>USGS Transportation (The National Map), no API key</td><td>United States only</td></tr>
+            <tr><td>Named landmarks (summits, passes, valleys, ...)</td><td>USGS GNIS gazetteer (The National Map), no API key</td><td>United States only</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every data source is a US government/public API, so topobadge currently only produces full-color terrain for US hikes. An earlier version used OpenStreetMap for global reach, but its public Overpass API proved too unreliable in practice; USGS's suite of APIs (plus an independent Esri fallback specifically for water) has been consistently fast and available instead. Water is deliberately layered across three independent sources - both toggleable in the web UI's adjust step, or via <code class="inline">--use-vector-water</code>/<code class="inline">--use-nlcd-water</code> on the CLI - so a single outage doesn't take water off the map.</p>
+    </section>
+
+    <section id="troubleshooting">
+      <div class="kicker">When something's off</div>
+      <h2>Troubleshooting</h2>
+
+      <h3 style="font-family:'IBM Plex Sans',sans-serif;font-size:1rem;margin-top:24px;">Fetch finished, but there's no water/forest color</h3>
+      <p>USGS's APIs have been reliable in practice, but they're still network services topobadge doesn't control. Water is layered across three independent sources (NHD, then Esri Living Atlas, then NLCD's own water class blended in) so a single outage rarely removes water entirely - but if NLCD itself is down, vegetation/ice/water-blend all go with it. topobadge continues with whatever it has rather than failing the fetch, and prints a warning to that effect. Re-fetching later fills things back in with no other changes needed; in the meantime, the adjust step's water-source toggles let you see exactly what's available and work around a partial outage rather than guessing.</p>
+
+      <h3 style="font-family:'IBM Plex Sans',sans-serif;font-size:1rem;margin-top:20px;">Colors look wrong in my slicer</h3>
+      <p>See <a href="#printing">Printing it</a> &mdash; import the individual STL files together and assign filament colors by hand rather than relying on the combined 3MF's embedded color.</p>
+
+      <div class="callout danger">
+        <strong>No terrain shows up at all / elevation looks flat</strong>
+        Confirm the hike is within the United States &mdash; the elevation data source (USGS 3DEP) doesn't cover other countries yet.
+      </div>
+    </section>
+
+    <footer>
+      topobadge &mdash; a local, GPX-in / 3D-print-ready-out tool. No account, no cloud processing beyond the public elevation and map-data APIs it queries on your behalf.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('contours');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function resize() {
+    var rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+
+  function noise(x, y, seed) {
+    var v = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  function elevation(x, y) {
+    var e = 0;
+    e += Math.sin(x * 0.9 + 1.3) * Math.cos(y * 0.7) * 0.5;
+    e += Math.sin(x * 1.8 - y * 1.1 + 2.0) * 0.28;
+    e += (noise(Math.floor(x * 3), Math.floor(y * 3), 7) - 0.5) * 0.18;
+    return e;
+  }
+
+  function draw() {
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var styles = getComputedStyle(document.documentElement);
+    var accent = styles.getPropertyValue('--accent').trim() || '#3d7a49';
+    ctx.strokeStyle = accent;
+    var levels = 14;
+    for (var lvl = 0; lvl < levels; lvl++) {
+      var threshold = (lvl / levels - 0.5) * 1.3;
+      ctx.globalAlpha = 0.16 + (lvl / levels) * 0.10;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      var cols = 90, rows = 55;
+      for (var j = 0; j < rows; j++) {
+        for (var i = 0; i < cols; i++) {
+          var x0 = i / cols, y0 = j / rows;
+          var x1 = (i + 1) / cols, y1 = (j + 1) / rows;
+          var nx0 = x0 * 6 - 3, ny0 = y0 * 6 - 3;
+          var nx1 = x1 * 6 - 3, ny1 = y1 * 6 - 3;
+          var a = elevation(nx0, ny0), b = elevation(nx1, ny0);
+          var c = elevation(nx1, ny1), d = elevation(nx0, ny1);
+          var corners = [a, b, c, d];
+          var above = corners.filter(function (v) { return v > threshold; }).length;
+          if (above > 0 && above < 4) {
+            var px = (i + 0.5) / cols * w, py = (j + 0.5) / rows * h;
+            ctx.moveTo(px - w / cols * 0.4, py);
+            ctx.lineTo(px + w / cols * 0.4, py);
+          }
+        }
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  resize();
+  draw();
+  window.addEventListener('resize', function () { resize(); draw(); });
+  if (!reduceMotion) {
+    // gentle one-time redraw after fonts settle; no continuous animation
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  }
+})();
+</script>
+</body>
+</html>
