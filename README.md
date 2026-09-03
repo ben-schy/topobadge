@@ -14,17 +14,24 @@ no API key required).
 
 ## Quick start
 
+**Use `serve` — it's the intended way to run topobadge.** The web UI is
+where you actually customize a build: reassign source classes to layers,
+tweak colors/rise/widths, and see the preview update in under a second per
+change, all without touching the network again after the initial fetch. The
+`build` CLI command skips all of that and just applies whatever flags you
+pass, so it's mainly useful for scripting or debugging, not day-to-day use.
+
 **Windows, no command line needed:** double-click [run.bat](run.bat). The
 first run sets up a virtual environment and installs dependencies
 automatically; every run after that just starts the app and opens your
-browser to a local web UI — drag in a `.gpx` file, pick a size, click Build.
+browser to the local web UI — drag in a `.gpx` file, pick a size, click
+Fetch, then adjust and generate.
 
 **Command line:**
 
 ```sh
 pip install -e .
-topobadge build my_hike.gpx
-topobadge serve   # same thing, but as a local web page
+topobadge serve
 ```
 
 Requires Python 3.11+.
@@ -93,7 +100,8 @@ From the CLI, use `--vegetation-preset` for the common case, or
 ## Underside plaque
 
 Optional text — a hike name, date, who was there — engraved flush into the
-underside in its own color:
+underside in its own color. Set it in the web UI's "Underside text plaque"
+panel, or on the CLI:
 
 ```sh
 topobadge build my_hike.gpx --mm-per-cell 0.35 \
@@ -114,7 +122,11 @@ topobadge build TRACK.gpx [OPTIONS]
 topobadge serve [--host 127.0.0.1] [--port 5151] [--no-open-browser]
 ```
 
-Every option has a sensible default — the shortest useful invocation is just
+`build` is a debug/scripting escape hatch, not the recommended way to use
+topobadge — it takes a fixed set of flags and produces output in one shot,
+with none of the web UI's live preview or per-layer adjustment. Reach for
+`serve` unless you specifically need a non-interactive, scriptable build.
+Every option has a sensible default — the shortest invocation is just
 `topobadge build my_hike.gpx`. Key options:
 
 | Flag | Default | What it controls |
