@@ -58,7 +58,7 @@ class UtmBBox:
 
 @dataclass
 class Track:
-    gpx_path: str
+    source_label: str  # human-readable description, for logging only
     utm_epsg: int
     utm_crs: pyproj.CRS
     lines_latlon: MultiLineString  # raw track, EPSG:4326, (lon, lat)
@@ -134,11 +134,46 @@ def load_track(gpx_path: str, buffer_km: float) -> Track:
     working_polygon_latlon = Polygon(ring_latlon)
 
     return Track(
-        gpx_path=gpx_path,
+        source_label=gpx_path,
         utm_epsg=utm_epsg,
         utm_crs=utm_crs,
         lines_latlon=lines_latlon,
         lines_utm=lines_utm,
+        track_bbox_utm=track_bbox_utm,
+        working_bbox_utm=working_bbox_utm,
+        working_polygon_latlon=working_polygon_latlon,
+    )
+
+
+def load_point_area(lat: float, lon: float, buffer_km: float) -> Track:
+    """Build a synthetic Track centered on a bare lat/lon point instead of a
+    GPX line - for the map-picker starting mode. Everything downstream
+    (fetch_stage, compose_masks, mesh_stage) only ever reads the working
+    bbox/CRS, except the "trail" mask which reads lines_utm - left empty
+    here, so a point-area build simply has no trail layer.
+    """
+    utm_epsg = _utm_epsg_for_lonlat(lon, lat)
+    utm_crs = pyproj.CRS.from_epsg(utm_epsg)
+
+    to_utm = pyproj.Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
+    to_lonlat = pyproj.Transformer.from_crs(utm_crs, "EPSG:4326", always_xy=True)
+
+    cx, cy = to_utm.transform(lon, lat)
+    track_bbox_utm = UtmBBox(cx, cy, cx, cy)
+    working_bbox_utm = track_bbox_utm.buffered(buffer_km * 1000.0)
+
+    ring_utm = _densified_box_coords(working_bbox_utm)
+    ring_latlon = [to_lonlat.transform(x, y) for x, y in ring_utm]
+    working_polygon_latlon = Polygon(ring_latlon)
+
+    empty_lines = MultiLineString([])
+
+    return Track(
+        source_label=f"{lat:.5f}, {lon:.5f}",
+        utm_epsg=utm_epsg,
+        utm_crs=utm_crs,
+        lines_latlon=empty_lines,
+        lines_utm=empty_lines,
         track_bbox_utm=track_bbox_utm,
         working_bbox_utm=working_bbox_utm,
         working_polygon_latlon=working_polygon_latlon,

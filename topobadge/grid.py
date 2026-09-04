@@ -10,7 +10,7 @@ import numpy as np
 from affine import Affine
 from rasterio.features import rasterize
 from scipy import ndimage
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
 
 from .gpx import UtmBBox
 
@@ -86,6 +86,13 @@ def hexagon_polygon(center_x: float, center_y: float, circumradius: float) -> Po
     angles = np.deg2rad(np.arange(6) * 60.0)
     coords = [(center_x + circumradius * np.cos(a), center_y + circumradius * np.sin(a)) for a in angles]
     return Polygon(coords)
+
+
+def circle_polygon(center_x: float, center_y: float, radius: float) -> Polygon:
+    """A circular footprint whose diameter is 2*radius - sized the same way
+    hexagon_polygon's circumradius is, so size_mm stays the model's longest
+    horizontal dimension whichever shape is chosen."""
+    return Point(center_x, center_y).buffer(radius, quad_segs=48)
 
 
 def rasterize_mask(grid: GridSpec, geometry) -> np.ndarray:

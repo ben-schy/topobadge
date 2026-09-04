@@ -18,6 +18,7 @@ import uuid
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
 
+from .gpx import load_point_area, load_track
 from .pipeline import (
     LAYER_LABELS,
     SOURCE_CLASS_LABELS,
@@ -145,9 +146,24 @@ def _adjust_options_from_form(form) -> AdjustOptions:
 
 def _run_fetch(job: Job, gpx_path: str, options: FetchOptions) -> None:
     try:
-        job.fetched = fetch_stage(gpx_path, options, on_log=job.append_log)
+        job.append_log(f"Loading GPX track: {gpx_path}")
+        track = load_track(gpx_path, buffer_km=options.buffer_km)
+        job.fetched = fetch_stage(track, options, on_log=job.append_log)
         job.state = "ready"
     except Exception as e:  # noqa: BLE001 - surface any failure to the UI instead of crashing the thread silently
+        job.error = str(e)
+        job.state = "error"
+
+
+def _run_fetch_area(job: Job, lat: float, lon: float, options: FetchOptions) -> None:
+    """Map-picker mode: the working area comes from a picked center point
+    plus a radius, with no GPX track (and so no trail layer)."""
+    try:
+        job.append_log(f"Working area centered on {lat:.5f}, {lon:.5f} (radius {options.buffer_km}km)")
+        track = load_point_area(lat, lon, buffer_km=options.buffer_km)
+        job.fetched = fetch_stage(track, options, on_log=job.append_log)
+        job.state = "ready"
+    except Exception as e:  # noqa: BLE001
         job.error = str(e)
         job.state = "error"
 
@@ -224,6 +240,32 @@ def create_app() -> Flask:
         job = Job(job_id, job_dir)
         _JOBS[job_id] = job
         thread = threading.Thread(target=_run_fetch, args=(job, gpx_path, fetch_options), daemon=True)
+        thread.start()
+
+        return jsonify({"job_id": job_id})
+
+    @app.post("/api/fetch_area")
+    def api_fetch_area():
+        try:
+            lat = float(request.form["lat"])
+            lon = float(request.form["lon"])
+        except (KeyError, TypeError, ValueError):
+            return jsonify({"error": "Pick a center point on the map first"}), 400
+        if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+            return jsonify({"error": f"Center point out of range: {lat}, {lon}"}), 400
+
+        try:
+            fetch_options = _fetch_options_from_form(request.form)
+        except (TypeError, ValueError) as e:
+            return jsonify({"error": f"Invalid option value: {e}"}), 400
+
+        job_id = uuid.uuid4().hex
+        job_dir = os.path.join(_JOBS_ROOT, job_id)
+        os.makedirs(job_dir, exist_ok=True)
+
+        job = Job(job_id, job_dir)
+        _JOBS[job_id] = job
+        thread = threading.Thread(target=_run_fetch_area, args=(job, lat, lon, fetch_options), daemon=True)
         thread.start()
 
         return jsonify({"job_id": job_id})

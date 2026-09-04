@@ -1,12 +1,14 @@
 # topobadge
 
-Turn a GPX hike track into a multicolor 3D-printable topo map.
+Turn a GPX hike track — or any spot you point at on a map — into a
+multicolor 3D-printable topo map.
 
-Feed it a `.gpx` file and topobadge pulls real elevation and land-cover data,
-builds a small hexagonal (or rectangular) relief map of the hike and its
-surroundings, and hands you a ready-to-print 3MF — grey rock, blue water,
-green forest, and white ice inlaid flush into the terrain, with the trail
-itself the only thing raised above the surface.
+Give it a `.gpx` file or pick an area on the map, and topobadge pulls real
+elevation and land-cover data, builds a small hexagonal (or rectangular, or
+circular) relief map of that area, and hands you a ready-to-print 3MF — grey
+rock, blue water, green forest, and white ice inlaid flush into the terrain,
+with the hike's trail (if you gave it one) the only thing raised above the
+surface.
 
 Everything runs locally. Your GPX file and the generated models never leave
 your machine except to fetch public elevation/map data (US government APIs,
@@ -24,8 +26,18 @@ pass, so it's mainly useful for scripting or debugging, not day-to-day use.
 **Windows, no command line needed:** double-click [run.bat](run.bat). The
 first run sets up a virtual environment and installs dependencies
 automatically; every run after that just starts the app and opens your
-browser to the local web UI — drag in a `.gpx` file, pick a size, click
-Fetch, then adjust and generate.
+browser to the local web UI.
+
+There you pick a starting point in one of two ways:
+
+- **Upload GPX** — drag in a `.gpx` track and the tile is framed around the
+  hike, with the route raised above the terrain.
+- **Pick on map** — click anywhere on an interactive map to drop the center
+  of your tile, drag the handle to size it, and build a tile of that area
+  with no GPX involved.
+
+Either way you then pick a size and shape, click Fetch, adjust, and
+generate.
 
 **Command line:**
 
@@ -40,9 +52,10 @@ Requires Python 3.11+.
 
 Five stages, all running on your machine:
 
-1. **Track & frame** — parse the GPX, pick a local UTM projection, and frame
-   a hexagonal (or rectangular) working area around the track plus a buffer
-   of surrounding context.
+1. **Frame the area** — from a GPX track (its bounding box plus a buffer of
+   surrounding context) or from a picked center point and radius, pick a
+   local UTM projection and frame a hexagonal, rectangular, or circular
+   working area.
 2. **Elevation** — fetch a real elevation grid for that area from USGS 3DEP.
 3. **Land cover & overlays** — fetch lakes/streams/rivers (USGS NHD, falling
    back to Esri Living Atlas), a vegetation/ice classification (NLCD), roads
@@ -119,22 +132,29 @@ the longest line.
 
 ```
 topobadge build TRACK.gpx [OPTIONS]
+topobadge build-area --lat LAT --lon LON [OPTIONS]
 topobadge serve [--host 127.0.0.1] [--port 5151] [--no-open-browser]
 ```
 
-`build` is a debug/scripting escape hatch, not the recommended way to use
-topobadge — it takes a fixed set of flags and produces output in one shot,
-with none of the web UI's live preview or per-layer adjustment. Reach for
-`serve` unless you specifically need a non-interactive, scriptable build.
-Every option has a sensible default — the shortest invocation is just
-`topobadge build my_hike.gpx`. Key options:
+`build` and `build-area` are debug/scripting escape hatches, not the
+recommended way to use topobadge — they take a fixed set of flags and
+produce output in one shot, with none of the web UI's live preview or
+per-layer adjustment. Reach for `serve` unless you specifically need a
+non-interactive, scriptable build. `build-area` is the CLI equivalent of
+the map picker: it takes a center coordinate instead of a track, and
+produces no trail layer.
+
+Every option has a sensible default — the shortest invocations are
+`topobadge build my_hike.gpx` and
+`topobadge build-area --lat 39.97 --lon -105.295`. Key options, shared by
+both build commands:
 
 | Flag | Default | What it controls |
 |---|---|---|
-| `--base-shape` | hexagon | Outer footprint: `hexagon` or `rectangle`. |
+| `--base-shape` | hexagon | Outer footprint: `hexagon`, `rectangle`, or `circle`. |
 | `--size-mm` | 80 | Longest horizontal dimension of the printed model. |
 | `--vertical-exaggeration` | 2.0 | Relief multiplier so terrain reads clearly at this scale. |
-| `--buffer-km` | 1.2 | Surrounding context fetched beyond the track's own bounding box. |
+| `--buffer-km` | 1.2 | Context fetched beyond the track's bounding box — or, for `build-area`, the radius around the center point. |
 | `--mm-per-cell` | 0.1 | Mesh resolution in print-space mm per grid cell. |
 | `--base-thickness-mm` | 1.0 | Minimum floor thickness below the lowest terrain point. |
 | `--inlay-depth-mm` | 1.0 | How deep water/forest/ice are inlaid below the surface. |
@@ -150,8 +170,9 @@ Run `topobadge build --help` for the full list, including plaque options.
 
 ## Output files
 
-Written to `<gpx name>_topo/` (or `--out-dir`) — only the parts actually
-present in the hike's area are written:
+Written to `<gpx name>_topo/` (or `area_<lat>_<lon>_topo/` for `build-area`,
+or wherever `--out-dir` says) — only the parts actually present in the
+area are written:
 
 | File | Contents |
 |---|---|
@@ -159,7 +180,7 @@ present in the hike's area are written:
 | `water.stl` | Lakes, ponds, streams, and rivers, where present. |
 | `vegetation.stl` | Trees/shrub/grassland/etc. assigned to the vegetation layer. |
 | `ice.stl` | Glaciers/permanent snow, where present. |
-| `trail.stl` | The hike route itself, raised above everything else. |
+| `trail.stl` | The hike route itself, raised above everything else (GPX builds only). |
 | `roads.stl` / `other_trails.stl` / `landmarks.stl` | Only written if assigned to a visible layer. |
 | `combined.3mf` | All present parts in one file, with color assigned per part. |
 | `preview.png` | A top-down colored render for a quick sanity check. |

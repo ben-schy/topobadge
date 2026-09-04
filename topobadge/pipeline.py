@@ -35,8 +35,17 @@ from shapely.ops import unary_union
 
 from .elevation import fetch_dem
 from .export3mf import ColoredPart, write_3mf
-from .gpx import Track, load_track
-from .grid import GridSpec, build_grid_spec, clean_mask, hexagon_polygon, rasterize_mask, resolve_overlaps, smooth_mask
+from .gpx import Track, load_point_area, load_track
+from .grid import (
+    GridSpec,
+    build_grid_spec,
+    circle_polygon,
+    clean_mask,
+    hexagon_polygon,
+    rasterize_mask,
+    resolve_overlaps,
+    smooth_mask,
+)
 from .hydrography import WaterFeatures, fetch_water_features
 from .landcover import SOURCE_CLASSES, fetch_nlcd_classes, source_class_masks
 from .landmarks import NamedPoint, fetch_landmarks
@@ -137,10 +146,13 @@ class FetchOptions:
     """Anything that changes the working area/grid - changing one of these
     requires re-fetching from every data source."""
 
+    # In GPX mode this is the context buffered beyond the track's own bbox;
+    # in map-picker mode there is no track, so it is simply the radius of
+    # the picked area around the chosen center point.
     buffer_km: float = 1.2
     size_mm: float = 80.0
     mm_per_cell: float = 0.1
-    base_shape: str = "hexagon"  # "rectangle" | "hexagon" - hex keepsake tile is the primary use case
+    base_shape: str = "hexagon"  # "rectangle" | "hexagon" | "circle" - hex keepsake tile is the primary use case
 
 
 @dataclass
@@ -173,7 +185,7 @@ class AdjustOptions:
 
 @dataclass
 class FetchedData:
-    gpx_path: str
+    source_label: str
     fetch_options: FetchOptions
     track: Track
     grid: GridSpec
@@ -202,25 +214,28 @@ class BuildResult:
 # --------------------------------------------------------------------------
 
 
-def fetch_stage(gpx_path: str, options: FetchOptions, on_log: Callable[[str], None] = print) -> FetchedData:
-    on_log(f"Loading GPX track: {gpx_path}")
-    track = load_track(gpx_path, buffer_km=options.buffer_km)
-
-    # A hexagon footprint needs a square fetch/working extent underneath it -
-    # otherwise the hexagon would get clipped along the shorter axis of a
-    # non-square working bbox.
-    working_bbox = track.working_bbox_utm.squared() if options.base_shape == "hexagon" else track.working_bbox_utm
+def fetch_stage(track: Track, options: FetchOptions, on_log: Callable[[str], None] = print) -> FetchedData:
+    # A hexagon or circle footprint needs a square fetch/working extent
+    # underneath it - otherwise the shape would get clipped along the
+    # shorter axis of a non-square working bbox.
+    inscribed = options.base_shape in ("hexagon", "circle")
+    working_bbox = track.working_bbox_utm.squared() if inscribed else track.working_bbox_utm
 
     on_log(f"Building working grid (UTM EPSG:{track.utm_epsg}, {options.base_shape} footprint)...")
     grid = build_grid_spec(working_bbox, track.utm_epsg, size_mm=options.size_mm, mm_per_cell=options.mm_per_cell)
     on_log(f"  {grid.ncols} x {grid.nrows} cells, {grid.cell_size_x:.1f} x {grid.cell_size_y:.1f} m/cell")
 
     footprint_mask = None
-    if options.base_shape == "hexagon":
+    if inscribed:
         cx = (grid.min_x + grid.max_x) / 2
         cy = (grid.min_y + grid.max_y) / 2
         circumradius_m = (options.size_mm / 2) / grid.mm_per_meter
-        footprint_mask = rasterize_mask(grid, hexagon_polygon(cx, cy, circumradius_m))
+        shape_polygon = (
+            hexagon_polygon(cx, cy, circumradius_m)
+            if options.base_shape == "hexagon"
+            else circle_polygon(cx, cy, circumradius_m)
+        )
+        footprint_mask = rasterize_mask(grid, shape_polygon)
 
     on_log("Fetching elevation data (USGS 3DEP)...")
     dem = fetch_dem(grid)
@@ -267,7 +282,7 @@ def fetch_stage(gpx_path: str, options: FetchOptions, on_log: Callable[[str], No
         landmarks = []
 
     return FetchedData(
-        gpx_path=gpx_path,
+        source_label=track.source_label,
         fetch_options=options,
         track=track,
         grid=grid,
@@ -584,9 +599,32 @@ def build_topo(
     write_preview: bool = True,
     on_log: Callable[[str], None] = print,
 ) -> BuildResult:
-    fetched = fetch_stage(gpx_path, fetch_options, on_log=on_log)
+    on_log(f"Loading GPX track: {gpx_path}")
+    track = load_track(gpx_path, buffer_km=fetch_options.buffer_km)
+    fetched = fetch_stage(track, fetch_options, on_log=on_log)
     resolved_masks = compose_masks(fetched, adjust_options)
     if out_dir is None:
         base_name = os.path.splitext(os.path.basename(gpx_path))[0]
         out_dir = os.path.join(os.path.dirname(os.path.abspath(gpx_path)), f"{base_name}_topo")
+    return mesh_stage(fetched, adjust_options, resolved_masks, out_dir, write_preview=write_preview, on_log=on_log)
+
+
+def build_topo_area(
+    lat: float,
+    lon: float,
+    fetch_options: FetchOptions,
+    adjust_options: AdjustOptions,
+    out_dir: str | None = None,
+    write_preview: bool = True,
+    on_log: Callable[[str], None] = print,
+) -> BuildResult:
+    """Same as build_topo, but for an area picked by coordinates rather than
+    derived from a GPX track - the CLI counterpart of the web UI's map
+    picker. There is no hike route, so no trail layer is produced."""
+    on_log(f"Working area centered on {lat:.5f}, {lon:.5f} (radius {fetch_options.buffer_km}km)")
+    track = load_point_area(lat, lon, buffer_km=fetch_options.buffer_km)
+    fetched = fetch_stage(track, fetch_options, on_log=on_log)
+    resolved_masks = compose_masks(fetched, adjust_options)
+    if out_dir is None:
+        out_dir = os.path.join(os.getcwd(), f"area_{lat:.4f}_{lon:.4f}_topo")
     return mesh_stage(fetched, adjust_options, resolved_masks, out_dir, write_preview=write_preview, on_log=on_log)

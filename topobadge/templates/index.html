@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>topobadge</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg: #14171a;
@@ -62,6 +64,29 @@
   .field.checkbox { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
   .field.checkbox input { width: 16px; height: 16px; }
   .field.checkbox label { margin: 0; font-size: 0.88rem; color: var(--text); }
+
+  .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode-tabs button {
+    padding: 9px 18px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); cursor: pointer; font-size: 0.92rem;
+  }
+  .mode-tabs button.active { border-color: var(--accent); background: rgba(79,143,95,0.18); color: var(--text); font-weight: 600; }
+
+  /* Leaflet renders its own light chrome; keep it from clashing with the dark panel. */
+  #pickerMap { height: 380px; border-radius: var(--radius); border: 1px solid var(--border); }
+  #pickerMap .leaflet-container { background: var(--panel-2); }
+  .map-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .map-toolbar button {
+    padding: 7px 14px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 0.86rem;
+  }
+  .map-toolbar button:hover { border-color: var(--accent); }
+  .map-hint { color: var(--muted); font-size: 0.85rem; }
+  .area-handle {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+    cursor: nesw-resize;
+  }
 
   .shape-toggle { display: flex; gap: 8px; }
   .shape-toggle button {
@@ -124,18 +149,34 @@
 <div class="wrap">
   <header>
     <h1>topobadge</h1>
-    <p>Upload a GPX hike track, get a multicolor 3D-printable topo map back.</p>
+    <p>Upload a GPX hike track or pick any area on the map, get a multicolor 3D-printable topo map back.</p>
   </header>
 
-  <!-- Step 1: upload + fetch -->
+  <!-- Step 1: pick an area (GPX track or map), then fetch -->
   <div class="card" id="fetchCard">
     <h2>1. Fetch data</h2>
-    <div class="dropzone" id="dropzone">
-      <div>Drop a .gpx file here, or click to browse</div>
-      <div class="hint">Track only - no account, no upload leaves your machine</div>
-      <div class="filename" id="filename" hidden></div>
+
+    <div class="mode-tabs">
+      <button type="button" data-mode="gpx" class="active">Upload GPX</button>
+      <button type="button" data-mode="map">Pick on map</button>
     </div>
-    <input type="file" id="fileInput" accept=".gpx">
+
+    <div id="gpxPanel">
+      <div class="dropzone" id="dropzone">
+        <div>Drop a .gpx file here, or click to browse</div>
+        <div class="hint">Track only - no account, no upload leaves your machine</div>
+        <div class="filename" id="filename" hidden></div>
+      </div>
+      <input type="file" id="fileInput" accept=".gpx">
+    </div>
+
+    <div id="mapPanel" hidden>
+      <div id="pickerMap"></div>
+      <div class="map-toolbar">
+        <button type="button" id="locateBtn">Use my location</button>
+        <span class="map-hint" id="mapHint">Click the map to place the center of your tile.</span>
+      </div>
+    </div>
 
     <div class="grid">
       <div class="field">
@@ -143,6 +184,7 @@
         <div class="shape-toggle">
           <button type="button" data-shape="hexagon" class="active">Hexagon</button>
           <button type="button" data-shape="rectangle">Rectangle</button>
+          <button type="button" data-shape="circle">Circle</button>
         </div>
         <input type="hidden" id="base_shape" value="hexagon">
       </div>
@@ -151,7 +193,7 @@
         <input type="number" id="size_mm" value="{{ defaults.size_mm }}" min="30" max="400" step="5">
       </div>
       <div class="field">
-        <label>Surrounding buffer (km)</label>
+        <label id="bufferLabel">Surrounding buffer (km)</label>
         <input type="number" id="buffer_km" value="{{ defaults.buffer_km }}" min="0.2" max="5" step="0.1">
       </div>
       <div class="field">
@@ -407,7 +449,7 @@ function setFile(f) {
   selectedFile = f;
   filenameEl.textContent = f.name;
   filenameEl.hidden = false;
-  fetchBtn.disabled = false;
+  updateFetchEnabled();
 }
 
 document.querySelectorAll('.shape-toggle button').forEach(btn => {
@@ -415,7 +457,166 @@ document.querySelectorAll('.shape-toggle button').forEach(btn => {
     document.querySelectorAll('.shape-toggle button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('base_shape').value = btn.dataset.shape;
+    drawArea();
   });
+});
+
+// ---- Starting mode: GPX upload vs. picking an area on the map ----
+
+const gpxPanel = document.getElementById('gpxPanel');
+const mapPanel = document.getElementById('mapPanel');
+const bufferInput = document.getElementById('buffer_km');
+const bufferLabel = document.getElementById('bufferLabel');
+const mapHint = document.getElementById('mapHint');
+let startMode = 'gpx';
+
+document.querySelectorAll('.mode-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    startMode = btn.dataset.mode;
+    gpxPanel.hidden = startMode !== 'gpx';
+    mapPanel.hidden = startMode !== 'map';
+    // Same field, different meaning: with no track to buffer around, it is
+    // simply the radius of the area you picked.
+    bufferLabel.textContent = startMode === 'map' ? 'Map area radius (km)' : 'Surrounding buffer (km)';
+    if (startMode === 'map') initMap();
+    updateFetchEnabled();
+  });
+});
+
+function updateFetchEnabled() {
+  fetchBtn.disabled = startMode === 'gpx' ? !selectedFile : !centerLatLng;
+}
+
+// ---- Map picker: click to place a center, drag the handle to resize ----
+
+const M_PER_DEG_LAT = 111320;  // flat-earth approximation, plenty accurate at the few-km scale of a tile
+const mPerDegLon = lat => M_PER_DEG_LAT * Math.cos(lat * Math.PI / 180);
+const AREA_STYLE = { color: '#4f8f5f', weight: 2, fillColor: '#4f8f5f', fillOpacity: 0.18 };
+
+let pickerMap = null;
+let centerLatLng = null;
+let centerMarker = null;
+let handleMarker = null;
+let areaLayer = null;
+let handleAngle = 0;  // radians, 0 = due east; where the resize handle currently sits
+
+const radiusKm = () => parseFloat(bufferInput.value) || 1.2;
+const radiusM = () => radiusKm() * 1000;
+
+function initMap() {
+  if (pickerMap) { pickerMap.invalidateSize(); return; }
+  // Continental US by default - every data source topobadge uses is US-only.
+  pickerMap = L.map('pickerMap').setView([39.5, -98.35], 4);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(pickerMap);
+  pickerMap.on('click', e => placeCenter(e.latlng.lat, e.latlng.lng));
+  setTimeout(() => pickerMap.invalidateSize(), 0);
+}
+
+// The printed footprint is inscribed in a square working area whose
+// half-width is the radius, so hexagon circumradius / circle radius /
+// rectangle half-width all equal exactly this radius in meters.
+function shapeLatLngs(center, metres, shape) {
+  const dLat = metres / M_PER_DEG_LAT;
+  const dLng = metres / mPerDegLon(center.lat);
+  if (shape === 'rectangle') {
+    return [
+      [center.lat + dLat, center.lng - dLng],
+      [center.lat + dLat, center.lng + dLng],
+      [center.lat - dLat, center.lng + dLng],
+      [center.lat - dLat, center.lng - dLng],
+    ];
+  }
+  // Hexagon: pointy-top with a vertex due east, matching grid.py::hexagon_polygon.
+  const n = shape === 'circle' ? 64 : 6;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 2 * Math.PI;
+    pts.push([center.lat + dLat * Math.sin(a), center.lng + dLng * Math.cos(a)]);
+  }
+  return pts;
+}
+
+function handleLatLng() {
+  const dLat = (radiusM() * Math.sin(handleAngle)) / M_PER_DEG_LAT;
+  const dLng = (radiusM() * Math.cos(handleAngle)) / mPerDegLon(centerLatLng.lat);
+  return L.latLng(centerLatLng.lat + dLat, centerLatLng.lng + dLng);
+}
+
+function placeCenter(lat, lng) {
+  centerLatLng = L.latLng(lat, lng);
+
+  if (!centerMarker) {
+    centerMarker = L.marker(centerLatLng, { draggable: true }).addTo(pickerMap);
+    centerMarker.on('drag', e => {
+      centerLatLng = e.target.getLatLng();
+      handleMarker.setLatLng(handleLatLng());  // the whole shape moves, size unchanged
+      drawArea();
+    });
+
+    handleMarker = L.marker(handleLatLng(), {
+      draggable: true,
+      icon: L.divIcon({ className: '', html: '<div class="area-handle"></div>', iconSize: [14, 14] }),
+      title: 'Drag to resize'
+    }).addTo(pickerMap);
+    handleMarker.on('drag', e => {
+      const p = e.target.getLatLng();
+      const dy = (p.lat - centerLatLng.lat) * M_PER_DEG_LAT;
+      const dx = (p.lng - centerLatLng.lng) * mPerDegLon(centerLatLng.lat);
+      handleAngle = Math.atan2(dy, dx);
+      const km = Math.min(5, Math.max(0.2, Math.sqrt(dx * dx + dy * dy) / 1000));
+      bufferInput.value = km.toFixed(2);
+      drawArea();
+    });
+    // Drag past the min/max and the radius clamps; snap the handle back onto
+    // the shape's edge so it never drifts away from the area it controls.
+    handleMarker.on('dragend', e => {
+      e.target.setLatLng(handleLatLng());
+      drawArea();
+    });
+  } else {
+    centerMarker.setLatLng(centerLatLng);
+    handleMarker.setLatLng(handleLatLng());
+  }
+
+  drawArea();
+  updateFetchEnabled();
+}
+
+function drawArea() {
+  if (!pickerMap || !centerLatLng) return;
+  if (areaLayer) pickerMap.removeLayer(areaLayer);
+  const shape = document.getElementById('base_shape').value;
+  areaLayer = shape === 'circle'
+    ? L.circle(centerLatLng, Object.assign({ radius: radiusM() }, AREA_STYLE))
+    : L.polygon(shapeLatLngs(centerLatLng, radiusM(), shape), AREA_STYLE);
+  areaLayer.addTo(pickerMap);
+  mapHint.textContent =
+    `Center ${centerLatLng.lat.toFixed(4)}, ${centerLatLng.lng.toFixed(4)} - ${(radiusKm() * 2).toFixed(1)}km across. ` +
+    'Drag the marker to move, the green dot to resize.';
+}
+
+// Typing a radius moves the handle to match, so both stay in sync.
+bufferInput.addEventListener('input', () => {
+  if (startMode !== 'map' || !centerLatLng) return;
+  handleMarker.setLatLng(handleLatLng());
+  drawArea();
+});
+
+document.getElementById('locateBtn').addEventListener('click', () => {
+  if (!navigator.geolocation) { mapHint.textContent = 'This browser has no geolocation support.'; return; }
+  mapHint.textContent = 'Locating...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      pickerMap.setView([pos.coords.latitude, pos.coords.longitude], 13);
+      placeCenter(pos.coords.latitude, pos.coords.longitude);
+    },
+    err => { mapHint.textContent = 'Could not get your location: ' + err.message; }
+  );
 });
 
 const FETCH_OPTION_IDS = ['buffer_km', 'size_mm', 'mm_per_cell', 'base_shape'];
@@ -444,7 +645,7 @@ let fetchPollTimer = null;
 let fetchCursor = 0;
 
 fetchBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (startMode === 'gpx' ? !selectedFile : !centerLatLng) return;
   fetchBtn.disabled = true;
   fetchLogCard.hidden = false;
   adjustCard.hidden = true;
@@ -453,15 +654,21 @@ fetchBtn.addEventListener('click', async () => {
   errorCard.hidden = true;
   logEl.textContent = '';
   fetchCursor = 0;
-  fetchStatusLine.textContent = 'Uploading...';
+  fetchStatusLine.textContent = startMode === 'gpx' ? 'Uploading...' : 'Starting...';
 
   const form = new FormData();
-  form.append('gpx', selectedFile);
   for (const id of FETCH_OPTION_IDS) form.append(id, document.getElementById(id).value);
+  if (startMode === 'gpx') {
+    form.append('gpx', selectedFile);
+  } else {
+    form.append('lat', centerLatLng.lat);
+    form.append('lon', centerLatLng.lng);
+  }
+  const endpoint = startMode === 'gpx' ? '/api/fetch' : '/api/fetch_area';
 
   let resp, data;
   try {
-    resp = await fetch('/api/fetch', { method: 'POST', body: form });
+    resp = await fetch(endpoint, { method: 'POST', body: form });
     data = await resp.json();
   } catch (e) {
     showError('Could not reach the server: ' + e);
